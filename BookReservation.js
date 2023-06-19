@@ -22,23 +22,82 @@ function lockField(formContext) {
 		formContext.getControl("header_process_csz_reservationstatus").setDisabled(true);
 	};
 }
+function onBookChange(executionContext) {
+	checkCurrentReservationsByPatron(executionContext);
+}
+
+function checkCurrentReservationsByPatron(executionContext) {
+	var formContext = executionContext.getFormContext();
+	var patron = formContext.getAttribute("csz_librarypatron").getValue();
+	var book = formContext.getAttribute("csz_book").getValue();
+	if (patron == null || patron == "" || book == null || book == "") {
+		return;
+	}
+	var bookId = book[0].id.replace("{", "").replace("}", "");
+	var isBookReservedByPatron = false;
+	var fetchXml = `?fetchXml=
+		<fetch version="1.0" mapping="logical" no-lock="false" distinct="true">
+	<entity name="csz_bookreservation">
+		<attribute name="csz_bookreservationid" />
+		<attribute name="csz_name" />
+		<attribute name="createdon" />
+		<attribute name="csz_bookitem" />
+		<attribute name="csz_librarypatron" />
+		<attribute name="csz_reservationstatus" />
+		<attribute name="csz_expirydate" />
+		<attribute name="csz_collectionstartdate" />
+		<attribute name="csz_enddate" />
+		<order attribute="createdon" descending="true" />
+		<attribute name="csz_reservationby" />
+		<attribute name="csz_book" />
+		<filter type="and">
+			<condition attribute="csz_librarypatron" operator="eq"
+				value="${patron[0].id}" uitype="csz_librarypatron" />
+			<condition attribute="csz_reservationstatus" operator="eq" value="1" />
+		</filter>
+	</entity>
+</fetch>`;
+	Xrm.WebApi.retrieveMultipleRecords("csz_bookreservation", fetchXml).then(function success(result) {
+		for (var i = 0; i < result.entities.length; i++) {
+			if (result.entities[i]._csz_book_value.toLowerCase() == bookId.toLowerCase()) {
+				isBookReservedByPatron = true;
+				break;
+			}
+		}
+		if (isBookReservedByPatron) {
+			var PublishString = {
+				title: "Existing Reservation Alert",
+				text: `
+				Patron already has existing reservation on the Book entered.
+
+				Reserved Book Title: ${book[0].name}
+			`};
+			var OptionalParameter = {
+				height: 300,
+				width: 400
+			};
+			Xrm.Navigation.openAlertDialog(PublishString, OptionalParameter);
+			formContext.getAttribute("csz_book").setValue("");
+		}
+	},
+		function (error) { console.log(error.message); });
+}
 
 function onBookItemChange(executionContext) {
 	var formContext = executionContext.getFormContext();
 	var item = formContext.getAttribute("csz_bookitem").getValue();
 	if (item !== null && item !== "") {
-		var bookLookup = [];
 		var itemId = item[0].id.replace("{", "").replace("}", "");
-		Xrm.WebApi.retrieveRecord("csz_bookitem", itemId, "?$select=_csz_book_value").then(
+		Xrm.WebApi.retrieveRecord("csz_bookitem", itemId).then(
 			function success(result) {
-				var reservedBookId = formContext.getAttribute("csz_book").getValue()[0].replace("{", "").replace("}", "");
-				if (reservedBookId != result._csz_book_value) {
+				var reservedBookId = formContext.getAttribute("csz_book").getValue()[0].id.replace("{", "").replace("}", "");
+				if (reservedBookId.toLowerCase() != result._csz_book_value.toLowerCase()) {
 					var PublishString = {
 						title: "Wrong Book Item Alert",
 						text: `
 						The Book Item you have entered does not match the book reserved. Please check again.
 
-						Reserved Book Title: ${reservedBook.name}
+						Reserved Book Title: ${formContext.getAttribute("csz_book").getValue()[0].name}
 
 						Your Book Item Title: ${result["_csz_book_value@OData.Community.Display.V1.FormattedValue"]}
 					`};
@@ -58,6 +117,7 @@ function onBookItemChange(executionContext) {
 }
 
 function onLibraryPatronChange(executionContext) {
+	checkCurrentReservationsByPatron(executionContext);
 	var formContext = executionContext.getFormContext();
 	var patron = formContext.getAttribute("csz_librarypatron").getValue();
 	if (patron != null) {
