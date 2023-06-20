@@ -2,6 +2,7 @@ function OnFormLoad(executionContext) {
 	let formContext = executionContext.getFormContext();
 	lockField(formContext);
 	lockFinishedFormFields(formContext);
+	moveToSetReservationCollectedStage(formContext);
 	formContext.getAttribute("csz_book").addOnChange(onBookItemChange);
 
 	var createdon = formContext.getAttribute("createdon").getValue();
@@ -285,15 +286,20 @@ function onModifiedOnChange(executionContext) {
 			var stage = formContext.data.process.getActiveStage().getName();
 			if (stage == "Book Item Collection Details") {
 				formContext.ui.clearFormNotification("libraryPatronNotification");
-				var bookItem = formContext.getAttribute("csz_bookitem").getValue();
-				var collectionStartDate = formContext.getAttribute("csz_collectionstartdate").getValue();
-				var notifyPatronToCollect = formContext.getAttribute("csz_notifypatrontocollect").getValue();
-				if (bookItem != null && notifyPatronToCollect == true && collectionStartDate != null) {
-					formContext.data.process.moveNext();
-					formContext.data.refresh(true);
-				}
+				moveToSetReservationCollectedStage(formContext);
 			}
 		}
+	}
+}
+
+function moveToSetReservationCollectedStage(formContext) {
+	var bookItem = formContext.getAttribute("csz_bookitem").getValue();
+	var collectionStartDate = formContext.getAttribute("csz_collectionstartdate").getValue();
+	var notifyPatronToCollect = formContext.getAttribute("csz_notifypatrontocollect").getValue();
+	var stage = formContext.data.process.getActiveStage().getName();
+	if (stage == "Book Item Collection Details" && bookItem != null && notifyPatronToCollect == true && collectionStartDate != null) {
+		formContext.data.process.moveNext();
+		formContext.data.refresh(true);
 	}
 }
 
