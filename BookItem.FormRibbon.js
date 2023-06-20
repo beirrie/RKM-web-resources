@@ -16,10 +16,9 @@ function assignToWaitingPatron(primaryControl) {
 		<attribute name='csz_expirydate' />
 		<attribute name='csz_collectionstartdate' />
 		<attribute name='csz_enddate' />
-		<order attribute='createdon' descending='true' />
 		<attribute name='csz_reservationby' />
 		<attribute name='csz_book' />
-		<order attribute="createdon" descending="false" />
+		<order attribute='createdon' descending='false' />
 		<filter type='and'>
 			<condition attribute='csz_reservationstatus' operator='eq' value='1' />
 			<condition attribute='csz_book' operator='eq' value='${book[0].id}' uitype='csz_book' />

@@ -19,7 +19,9 @@ function cancelReservation(formContext) {
 					formContext.getAttribute("csz_bookitem").setRequiredLevel("none");
 					formContext.getAttribute("csz_collectionstartdate").setRequiredLevel("none");
 					formContext.getAttribute("csz_notifypatrontocollect").setRequiredLevel("none");
-					formContext.getAttribute("csz_notifypatrontocollect").setValue(false);
+					if (formContext.data.process.getActiveStage().getName() != "Set Reservation Collected") {
+						formContext.getAttribute("csz_notifypatrontocollect").setValue(false);
+					}
 					formContext.getAttribute("csz_reservationstatus").setSubmitMode("always");
 					formContext.data.process.setStatus("aborted");
 					formContext.data.save(1);

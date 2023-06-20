@@ -55,8 +55,8 @@ function checkCurrentReservationsByPatron(executionContext) {
 			<condition attribute="csz_librarypatron" operator="eq"
 				value="${patron[0].id}" uitype="csz_librarypatron" />
 			<condition attribute="csz_reservationstatus" operator="eq" value="1" />
-		</filter>
-	</entity>
+			</filter>
+		</entity>
 </fetch>`;
 	Xrm.WebApi.retrieveMultipleRecords("csz_bookreservation", fetchXml).then(function success(result) {
 		for (var i = 0; i < result.entities.length; i++) {
@@ -154,6 +154,7 @@ function onLibraryPatronChange(executionContext) {
 }
 
 function onFormSave(executionContext) {
+	preventAutoSave(executionContext);
 	var formContext = executionContext.getFormContext();
 	var setReservationCollectedObj = formContext.getAttribute("csz_setreservationcollected");
 	var activeProcess = formContext.data.process.getActiveProcess();
@@ -201,6 +202,13 @@ function onFormSave(executionContext) {
 				);
 			}
 		}
+	}
+}
+
+function preventAutoSave(econtext) {
+	var eventArgs = econtext.getEventArgs();
+	if (eventArgs.getSaveMode() == 70) {
+		eventArgs.preventDefault();
 	}
 }
 
