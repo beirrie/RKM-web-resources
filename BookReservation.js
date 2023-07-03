@@ -16,6 +16,11 @@ function OnFormLoad(executionContext) {
 		tab_allreservations.setVisible(false);
 		section_collection.setVisible(false);
 	}
+
+	if (formContext.getAttribute("csz_reservationstatus").getValue() == 5 && formContext.data.process.getStatus() != "aborted") {
+		formContext.data.process.setStatus("aborted");
+		formContext.data.refresh(true);
+	}
 }
 
 function lockField(formContext) {
