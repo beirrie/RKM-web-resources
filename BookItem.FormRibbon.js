@@ -25,33 +25,56 @@ function assignToWaitingPatron(primaryControl) {
 		</filter>
 	</entity>
 </fetch>`;
+		var bpfId = "";
 		Xrm.WebApi.retrieveMultipleRecords("csz_bookreservation", fetchXml).then(function success(result) {
 			if (result.entities.length > 0) {
 				var waitingReservation = result.entities[0];
 				var waitingReservationId = waitingReservation.csz_bookreservationid;
+				var fetchXml = `?fetchXml=<fetch version='1.0' output-format='xml-platform' mapping='logical' distinct='false'>
+									<entity name='csz_reservationtocollectionprocess'>
+									  <attribute name='businessprocessflowinstanceid' />
+									  <attribute name='bpf_name' />
+									  <attribute name='bpf_csz_bookreservationid' />
+									  <attribute name='activestageid' />
+									  <attribute name='statecode' />
+									  <attribute name='statuscode' />
+									  <attribute name='processid' />
+									  <order attribute='bpf_name' descending='false' />
+									  <filter type='and'>
+										<condition attribute='bpf_csz_bookreservationid' operator='eq' value='${waitingReservationId}' />
+									  </filter>
+									</entity>
+								</fetch>`;
+				Xrm.WebApi.retrieveMultipleRecords("csz_reservationtocollectionprocess", fetchXml).then(function success(result) {
+					if (result.entities.length > 0) {
+						bpfId = result.entities[0].businessprocessflowinstanceid;
+						var pageInput = {
+							pageType: "entityrecord",
+							entityName: "csz_bookreservation",
+							entityId: waitingReservationId,
+							data: {
+								csz_bookitem: formContext.data.entity.getEntityReference(),
+								processInstanceId: bpfId
+							}
+						};
+						var navigationOptions = {
+							target: 2,
+							height: { value: 80, unit: "%" },
+							width: { value: 70, unit: "%" },
+							position: 1
+						};
+						Xrm.Navigation.navigateTo(pageInput, navigationOptions).then(
+							function success(result) {
 
-				var pageInput = {
-					pageType: "entityrecord",
-					entityName: "csz_bookreservation",
-					entityId: waitingReservationId,
-					data: {
-						csz_bookitem: formContext.data.entity.getEntityReference()
+							},
+							function error() {
+								console.log(error.message);
+							}
+						);
 					}
-				};
-				var navigationOptions = {
-					target: 2,
-					height: { value: 80, unit: "%" },
-					width: { value: 70, unit: "%" },
-					position: 1
-				};
-				Xrm.Navigation.navigateTo(pageInput, navigationOptions).then(
-					function success(result) {
-
-					},
-					function error() {
-						console.log(error.message);
-					}
-				);
+				}, function error() {
+					console.log(error.message);
+				});
 			}
 		},
 			function (error) { console.log(error.message); });
