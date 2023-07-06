@@ -234,8 +234,9 @@ function displayConfirmation(formContext) {
 			if (success.confirmed) {
 				formContext.getAttribute("csz_setreservationcollected").setValue(true);
 				formContext.getAttribute("csz_reservationstatus").setValue(3);
-				formContext.data.process.setStatus("finished");
 				formContext.data.refresh(true);
+				formContext.data.process.setStatus("finished");
+				disableFormFields(formContext);
 			}
 		}, function (error) { });
 }
