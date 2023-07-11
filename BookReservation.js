@@ -21,6 +21,12 @@ function OnFormLoad(executionContext) {
 		formContext.data.process.setStatus("aborted");
 		formContext.data.refresh(true);
 	}
+
+	if (formContext.getAttribute("csz_reservationstatus").getValue() == 3) {
+		formContext.data.process.setStatus("finished");
+		disableFormFields(formContext);
+		formContext.data.refresh(true);
+	}
 }
 
 function lockField(formContext) {
@@ -163,51 +169,24 @@ function onFormSave(executionContext) {
 	var formContext = executionContext.getFormContext();
 	var setReservationCollectedObj = formContext.getAttribute("csz_setreservationcollected");
 	var activeProcess = formContext.data.process.getActiveProcess();
-	if (activeProcess != null && setReservationCollectedObj.getValue() == true && formContext.getAttribute("csz_reservationstatus").getValue() != 3) {
+	if (activeProcess != null && setReservationCollectedObj.getValue() && formContext.getAttribute("csz_reservationstatus").getValue() != 3) {
 		var process = activeProcess.getName();
 		if (process == "Reservation To Collection Process") {
 			var stage = formContext.data.process.getActiveStage().getName();
 			if (stage == "Set Reservation Collected" && formContext.data.process.getStatus() != "finished") {
-				// check library patron
-				var loanBalance = 0;
-				var patronName = "";
-				var patron = formContext.getAttribute("csz_librarypatron").getValue();
-				Xrm.WebApi.retrieveRecord("csz_librarypatron", patron[0].id).then(
-					function success(result) {
-						patronName = result["_csz_contact_value@OData.Community.Display.V1.FormattedValue"];
-						loanBalance = result.csz_remainingborrowlimit;
-
-						if (loanBalance <= 0) {
-							var PublishString = {
-								title: "No Loan Balance Alert",
-								text: `
-					Library Patron has no loan balance. Unable to set Reservation as Collected.
-		
-					Name: ${patronName}
-					Loan Balance: ${loanBalance}
-				`};
-							var OptionalParameter = {
-								height: 300,
-								width: 400
-							};
-							Xrm.Navigation.openAlertDialog(PublishString, OptionalParameter).then(function (success) {
-								setReservationCollectedObj.setValue(false);
-							}, function (error) {
-								console.log(error.message);
-							});
-							formContext.ui.setFormNotification("Library Patron has no loan balance.", "WARNING", "LoanBalanceNotification");
-						} else {
-							displayConfirmation(formContext);
-							formContext.ui.clearFormNotification("LoanBalanceNotification");
-						}
-					},
-					function (error) {
-						console.log(error.message);
-					}
-				);
+				var hasBookLendingRecord = formContext.getAttribute("csz_loanrecord").getValue() != null;
+				if (hasBookLendingRecord) {
+					formContext.getAttribute("csz_setreservationcollected").setRequiredLevel("none");
+					formContext.data.process.setStatus("finished");
+					disableFormFields(formContext);
+				}
 			}
 		}
 	}
+	// if (formContext.getAttribute("csz_reservationstatus").getValue() == 3) {
+	// 	formContext.data.process.setStatus("finished");
+	// 	disableFormFields(formContext);
+	// }
 }
 
 function preventAutoSave(econtext) {
@@ -234,58 +213,62 @@ function displayConfirmation(formContext) {
 			if (success.confirmed) {
 				formContext.getAttribute("csz_setreservationcollected").setValue(true);
 				formContext.getAttribute("csz_reservationstatus").setValue(3);
-				formContext.data.refresh(true);
-				formContext.data.process.setStatus("finished");
-				disableFormFields(formContext);
+				formContext.data.refresh(true).then(function () {
+					formContext.data.process.setStatus("finished");
+					disableFormFields(formContext);
+				});
+			} else {
+				formContext.getAttribute("csz_setreservationcollected").setValue(false);
 			}
-		}, function (error) { });
+		}, function (error) {
+			console.log(error);
+		});
+	formContext.data.refresh(true);
 }
 
 function onSetReservationChange(executionContext) {
 	let formContext = executionContext.getFormContext();
-	var isLibraryPatronAllowedToCollect = false;
-	var loanBalance = 0;
-	var patronName = "";
-	var patron = formContext.getAttribute("csz_librarypatron").getValue();
-	Xrm.WebApi.retrieveRecord("csz_librarypatron", patron[0].id).then(
-		function success(result) {
-			patronName = result["_csz_contact_value@OData.Community.Display.V1.FormattedValue"];
-			loanBalance = result.csz_remainingborrowlimit;
+	var setReservationCollectedObj = formContext.getAttribute("csz_setreservationcollected");
+	if (setReservationCollectedObj.getValue()) {
+		var isLibraryPatronAllowedToCollect = false;
+		var loanBalance = 0;
+		var patronName = "";
+		var patron = formContext.getAttribute("csz_librarypatron").getValue();
 
-			if (loanBalance <= 0) {
-				var PublishString = {
-					title: "No Loan Balance Alert",
-					text: `
+		Xrm.WebApi.retrieveRecord("csz_librarypatron", patron[0].id).then(
+			function success(result) {
+				patronName = result["_csz_contact_value@OData.Community.Display.V1.FormattedValue"];
+				loanBalance = result.csz_remainingborrowlimit;
+
+				if (loanBalance <= 0) {
+					var PublishString = {
+						title: "No Loan Balance Alert",
+						text: `
 		Library Patron has no loan balance. Unable to set Reservation as Collected.
-
+		
 		Name: ${patronName}
 		Loan Balance: ${loanBalance}
-	`};
-				var OptionalParameter = {
-					height: 300,
-					width: 400
-				};
-				Xrm.Navigation.openAlertDialog(PublishString, OptionalParameter).then(function (success) {
-					setReservationCollectedObj.setValue(false);
-				}, function (error) {
-					console.log(error.message);
-				});
-				formContext.ui.setFormNotification("Library Patron has no loan balance.", "WARNING", "LoanBalanceNotification");
-			} else {
-				isLibraryPatronAllowedToCollect = true;
-				displayConfirmation(formContext);
-				formContext.ui.clearFormNotification("LoanBalanceNotification");
+		`};
+					var OptionalParameter = {
+						height: 300,
+						width: 400
+					};
+					Xrm.Navigation.openAlertDialog(PublishString, OptionalParameter).then(function (success) {
+						setReservationCollectedObj.setValue(false);
+					}, function (error) {
+						console.log(error.message);
+					});
+					formContext.ui.setFormNotification("Library Patron has no loan balance.", "WARNING", "LoanBalanceNotification");
+				} else {
+					isLibraryPatronAllowedToCollect = true;
+					displayConfirmation(formContext);
+					formContext.ui.clearFormNotification("LoanBalanceNotification");
+				}
+			},
+			function (error) {
+				console.log(error.message);
 			}
-		},
-		function (error) {
-			console.log(error.message);
-		}
-	);
-
-	var setReservationCollected = formContext.getAttribute("csz_setreservationcollected").getValue();
-	if (setReservationCollected && !isLibraryPatronAllowedToCollect) {
-		formContext.getAttribute("csz_setreservationcollected").setValue(false);
-		formContext.data.refresh(true);
+		);
 	}
 }
 
