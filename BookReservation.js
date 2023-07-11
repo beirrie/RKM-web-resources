@@ -34,6 +34,7 @@ function lockField(formContext) {
 		formContext.getControl("header_process_csz_reservationstatus").setDisabled(true);
 	};
 }
+
 function onBookChange(executionContext) {
 	checkCurrentReservationsByPatron(executionContext);
 }
@@ -216,6 +217,7 @@ function displayConfirmation(formContext) {
 				formContext.data.refresh(true).then(function () {
 					formContext.data.process.setStatus("finished");
 					disableFormFields(formContext);
+					showBookLendingAddedNotification();
 				});
 			} else {
 				formContext.getAttribute("csz_setreservationcollected").setValue(false);
@@ -224,6 +226,17 @@ function displayConfirmation(formContext) {
 			console.log(error);
 		});
 	formContext.data.refresh(true);
+}
+
+function showBookLendingAddedNotification() {
+	var notification =
+	{
+		type: 2,
+		level: 1,
+		message: "Book lending record added. Reservation to Collection process is completed.",
+		showCloseButton: true
+	}
+	Xrm.App.addGlobalNotification(notification);
 }
 
 function onSetReservationChange(executionContext) {
@@ -297,6 +310,7 @@ function moveToSetReservationCollectedStage(formContext) {
 	if (stage == "Book Item Collection Details" && bookItem != null && notifyPatronToCollect == true && collectionStartDate != null) {
 		formContext.data.process.moveNext();
 		formContext.data.refresh(true);
+		formContext.ui.setFormNotification("Patron will be notified to collect reserved item.", "INFO", "PatronToCollectNotification");
 	}
 }
 
